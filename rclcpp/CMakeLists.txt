@@ -167,6 +167,15 @@ foreach(interface_file ${interface_files})
     include/rclcpp/node_interfaces/get_${interface_name}.hpp)
 endforeach()
 
+option(BUILD_HBMEM "Build hbmem" OFF)
+if(${BUILD_HBMEM})
+  add_definitions(-DUSING_HBMEM)
+  list(APPEND ${PROJECT_NAME}_SRCS
+    src/rclcpp/hobot_memory.cpp)
+  link_directories(/home/hobot/cc_ws/sysroot_docker/usr/lib/hobot/)
+  include_directories(/home/hobot/cc_ws/sysroot_docker/usr/include/)
+endif()
+
 add_library(${PROJECT_NAME}
   ${${PROJECT_NAME}_SRCS})
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -174,6 +183,11 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
   "$<INSTALL_INTERFACE:include>")
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
+
+if(${BUILD_HBMEM})
+  target_link_libraries(${PROJECT_NAME} hbmem alog)
+endif()
+
 # specific order: dependents before dependencies
 ament_target_dependencies(${PROJECT_NAME}
   "libstatistics_collector"

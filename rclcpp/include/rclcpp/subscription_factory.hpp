@@ -104,10 +104,9 @@ create_subscription_factory(
       const rclcpp::QoS & qos
     ) -> rclcpp::SubscriptionBase::SharedPtr
     {
-      using rclcpp::Subscription;
       using rclcpp::SubscriptionBase;
 
-      auto sub = Subscription<CallbackMessageT, AllocatorT>::make_shared(
+      auto sub = std::make_shared<SubscriptionT>(
         node_base,
         *rosidl_typesupport_cpp::get_message_type_support_handle<MessageT>(),
         topic_name,

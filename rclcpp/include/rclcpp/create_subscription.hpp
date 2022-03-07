@@ -141,7 +141,9 @@ create_subscription(
     subscription_topic_stats->set_publisher_timer(timer);
   }
 
-  auto factory = rclcpp::create_subscription_factory<MessageT>(
+  auto factory = rclcpp::create_subscription_factory<
+   MessageT, CallbackT, AllocatorT,
+   CallbackMessageT, SubscriptionT>(
     std::forward<CallbackT>(callback),
     options,
     msg_mem_strat,

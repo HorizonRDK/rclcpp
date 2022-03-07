@@ -67,6 +67,13 @@
 #include "rclcpp/timer.hpp"
 #include "rclcpp/visibility_control.hpp"
 
+// #define USING_HBMEM
+
+#ifdef USING_HBMEM
+#include "rclcpp/publisher_hbmem.hpp"
+#include "rclcpp/subscription_hbmem.hpp"
+#endif
+
 namespace rclcpp
 {
 
@@ -220,6 +227,44 @@ public:
       MessageMemoryStrategyT::create_default()
     )
   );
+
+#ifdef USING_HBMEM
+  template<
+    typename MessageT,
+    typename AllocatorT = std::allocator<void>,
+    typename PublisherT = rclcpp::PublisherHbmem<MessageT, AllocatorT>>
+  std::shared_ptr<PublisherT>
+  create_publisher_hbmem(
+    const std::string & topic_name,
+    const rclcpp::QoS & qos,
+    const PublisherOptionsWithAllocator<AllocatorT> & options =
+    PublisherOptionsWithAllocator<AllocatorT>()
+  );
+
+  template<
+    typename MessageT,
+    typename CallbackT,
+    typename AllocatorT = std::allocator<void>,
+    typename CallbackMessageT =
+    typename rclcpp::subscription_traits::has_message_type<CallbackT>::type,
+    typename SubscriptionT = rclcpp::SubscriptionHbmem<CallbackMessageT, AllocatorT>,
+    typename MessageMemoryStrategyT = rclcpp::message_memory_strategy::MessageMemoryStrategy<
+      CallbackMessageT,
+      AllocatorT
+    >
+  >
+  std::shared_ptr<SubscriptionT>
+  create_subscription_hbmem(
+    const std::string & topic_name,
+    const rclcpp::QoS & qos,
+    CallbackT && callback,
+    const SubscriptionOptionsWithAllocator<AllocatorT> & options =
+    SubscriptionOptionsWithAllocator<AllocatorT>(),
+    typename MessageMemoryStrategyT::SharedPtr msg_mem_strat = (
+      MessageMemoryStrategyT::create_default()
+    )
+  );
+#endif
 
   /// Create a timer.
   /**
