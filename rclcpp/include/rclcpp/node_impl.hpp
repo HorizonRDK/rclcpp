@@ -30,6 +30,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <fstream>
 
 #include "rcl/publisher.h"
 #include "rcl/subscription.h"
@@ -53,6 +54,23 @@
 
 namespace rclcpp
 {
+
+#ifdef USING_HBMEM
+RCLCPP_LOCAL
+inline
+std::string
+extend_name_with_soc_uid(const std::string & name)
+{
+  std::string name_with_soc_uid(name);
+  std::ifstream istrm("/sys/class/socinfo/soc_uid");
+  if (istrm.is_open()) {
+    std::string soc_uid;
+    istrm >> soc_uid;
+    name_with_soc_uid += soc_uid;
+  }
+  return name_with_soc_uid;
+}
+#endif
 
 RCLCPP_LOCAL
 inline
@@ -103,6 +121,48 @@ Node::create_subscription(
     options,
     msg_mem_strat);
 }
+
+#ifdef USING_HBMEM
+template<typename MessageT, typename AllocatorT, typename PublisherT>
+std::shared_ptr<PublisherT>
+Node::create_publisher_hbmem(
+  const std::string & topic_name,
+  const rclcpp::QoS & qos,
+  const PublisherOptionsWithAllocator<AllocatorT> & options)
+{
+  return rclcpp::create_publisher<MessageT, AllocatorT, PublisherT>(
+    *this,
+    extend_name_with_sub_namespace(extend_name_with_soc_uid(topic_name), this->get_sub_namespace()),
+    qos,
+    options);
+}
+
+template<
+  typename MessageT,
+  typename CallbackT,
+  typename AllocatorT,
+  typename CallbackMessageT,
+  typename SubscriptionT,
+  typename MessageMemoryStrategyT>
+std::shared_ptr<SubscriptionT>
+Node::create_subscription_hbmem(
+  const std::string & topic_name,
+  const rclcpp::QoS & qos,
+  CallbackT && callback,
+  const SubscriptionOptionsWithAllocator<AllocatorT> & options,
+  typename MessageMemoryStrategyT::SharedPtr msg_mem_strat)
+{
+  return rclcpp::create_subscription<
+   MessageT, CallbackT, AllocatorT,
+   CallbackMessageT, SubscriptionT>(
+    *this,
+    extend_name_with_sub_namespace(extend_name_with_soc_uid(topic_name), this->get_sub_namespace()),
+    qos,
+    std::forward<CallbackT>(callback),
+    options,
+    msg_mem_strat);
+}
+#endif
 
 template<typename DurationRepT, typename DurationT, typename CallbackT>
 typename rclcpp::WallTimer<CallbackT>::SharedPtr
