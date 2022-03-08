@@ -170,8 +170,6 @@ endforeach()
 option(BUILD_HBMEM "Build hbmem" OFF)
 if(${BUILD_HBMEM})
   add_definitions(-DUSING_HBMEM)
-  list(APPEND ${PROJECT_NAME}_SRCS
-    src/rclcpp/hobot_memory.cpp)
   link_directories(/home/hobot/cc_ws/sysroot_docker/usr/lib/hobot/)
   include_directories(/home/hobot/cc_ws/sysroot_docker/usr/include/)
 endif()

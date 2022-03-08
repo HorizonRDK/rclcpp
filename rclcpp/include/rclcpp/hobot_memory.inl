@@ -6,7 +6,8 @@
 // reproduced, copied, transmitted, or used in any way for any purpose,
 // without the express written permission of Horizon Robotics Inc.
 
-#include "rclcpp/hobot_memory.hpp"
+#ifndef RCLCPP_INCLUDE_RCLCPP_HOBOT_MEMORY_INL_
+#define RCLCPP_INCLUDE_RCLCPP_HOBOT_MEMORY_INL_
 
 #include <cassert>
 #include <queue>
@@ -26,35 +27,23 @@ class HbmemModule {
     return processor;
   }
 
-  ~HbmemModule();
+  ~HbmemModule() { hb_mem_module_close(); }
 
-  int alloc(uint64_t size, hb_mem_common_buf_t &buf);
+  int alloc(uint64_t size, hb_mem_common_buf_t &buf) {
+    int64_t flags = HB_MEM_USAGE_CPU_READ_OFTEN | HB_MEM_USAGE_CPU_WRITE_OFTEN |
+                    HB_MEM_USAGE_CACHED | HB_MEM_USAGE_PRIV_HEAP_RESERVERD |
+                    HB_MEM_USAGE_MAP_INITIALIZED;
+    return hb_mem_alloc_com_buf(size, flags, &buf);
+  }
 
-  int import(hb_mem_common_buf_t &in_buf, hb_mem_common_buf_t &out_buf);
-
-  int free(int32_t fd);
+  int import(hb_mem_common_buf_t &in_buf, hb_mem_common_buf_t &out_buf) {
+    return hb_mem_import_com_buf(&in_buf, &out_buf);
+  }
+  int free(int32_t fd) { return hb_mem_free_buf(fd); }
 
  private:
-  HbmemModule();
+  HbmemModule() { hb_mem_module_open(); }
 };
-
-HbmemModule::~HbmemModule() { hb_mem_module_close(); }
-
-int HbmemModule::alloc(uint64_t size, hb_mem_common_buf_t &buf) {
-  int64_t flags = HB_MEM_USAGE_CPU_READ_OFTEN | HB_MEM_USAGE_CPU_WRITE_OFTEN |
-                  HB_MEM_USAGE_CACHED | HB_MEM_USAGE_PRIV_HEAP_RESERVERD |
-                  HB_MEM_USAGE_MAP_INITIALIZED;
-  return hb_mem_alloc_com_buf(size, flags, &buf);
-}
-
-int HbmemModule::import(hb_mem_common_buf_t &in_buf,
-                        hb_mem_common_buf_t &out_buf) {
-  return hb_mem_import_com_buf(&in_buf, &out_buf);
-}
-
-int HbmemModule::free(int32_t fd) { return hb_mem_free_buf(fd); }
-
-HbmemModule::HbmemModule() { hb_mem_module_open(); }
 
 template <typename MessageT>
 HbmemManager<MessageT>::HbmemManager(int num, int keep_last, int max_mem)
@@ -216,3 +205,5 @@ int HbmemBulkManager<MessageT>::free_message() {
 }
 
 }  // namespace rclcpp
+
+#endif  // RCLCPP_INCLUDE_RCLCPP_HOBOT_MEMORY_INL_

@@ -20,7 +20,6 @@ namespace rclcpp {
 
 using MessageHbmem = rcl_interfaces::msg::HobotMemoryCommon;
 
-
 class HbMemHeader {
  public:
   int32_t get_fd(void) { return fd_; }
@@ -101,5 +100,7 @@ class HbmemBulkManager {
 };
 
 }  // namespace rclcpp
+
+#include "hobot_memory.inl"
 
 #endif  // RCLCPP_INCLUDE_RCLCPP_HOBOT_MEMORY_HPP_
