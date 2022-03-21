@@ -146,6 +146,8 @@ class SubscriptionHbmem : public SubscriptionBase {
       }
     }
 
+    hbmem_manager_ = std::make_shared<HbmemBulksManager<CallbackMessageT>>();
+
     // Setup intra process publishing if requested.
     // if (rclcpp::detail::resolve_use_intra_process(options, *node_base)) {
     //   using rclcpp::detail::resolve_intra_process_buffer_type;
@@ -275,17 +277,23 @@ class SubscriptionHbmem : public SubscriptionBase {
     }
 
     auto hbmem_message = std::static_pointer_cast<MessageHbmem>(message);
-    HbmemBulkManager<CallbackMessageT> bulk_manager(hbmem_message.get());
     void *real_message = nullptr;
-    bulk_manager.get_message(&real_message);
 
-    auto typed_message = reinterpret_cast<CallbackMessageT *>(real_message);;
+    // HbmemBulkManager<CallbackMessageT> bulk_manager(hbmem_message.get());
+    // bulk_manager.get_message(&real_message);
+
+    hbmem_manager_->get_message(hbmem_message.get(), &real_message);
+
+    auto typed_message = reinterpret_cast<CallbackMessageT *>(real_message);
+
     auto sptr = std::shared_ptr<CallbackMessageT>(
         typed_message, [](CallbackMessageT *msg) { (void)msg; });
 
     any_callback_.dispatch(sptr, message_info);
 
-    bulk_manager.free_message();
+    // bulk_manager.free_message();
+
+    hbmem_manager_->free_message(hbmem_message.get());
   }
 
   void handle_loaned_message(void *loaned_message,
@@ -336,6 +344,8 @@ class SubscriptionHbmem : public SubscriptionBase {
   /// subscriber
   // SubscriptionTopicStatisticsSharedPtr
   // subscription_topic_statistics_{nullptr};
+
+  std::shared_ptr<HbmemBulksManager<CallbackMessageT>> hbmem_manager_;
 };
 
 }  // namespace rclcpp

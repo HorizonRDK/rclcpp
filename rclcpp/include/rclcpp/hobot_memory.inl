@@ -16,35 +16,6 @@
 
 namespace rclcpp {
 
-class HbmemModule {
- public:
-  static std::shared_ptr<HbmemModule> &Instance() {
-    static std::shared_ptr<HbmemModule> processor;
-    static std::once_flag init_flag;
-    std::call_once(init_flag, []() {
-      processor = std::shared_ptr<HbmemModule>(new HbmemModule());
-    });
-    return processor;
-  }
-
-  ~HbmemModule() { hb_mem_module_close(); }
-
-  int alloc(uint64_t size, hb_mem_common_buf_t &buf) {
-    int64_t flags = HB_MEM_USAGE_CPU_READ_OFTEN | HB_MEM_USAGE_CPU_WRITE_OFTEN |
-                    HB_MEM_USAGE_CACHED | HB_MEM_USAGE_PRIV_HEAP_RESERVERD |
-                    HB_MEM_USAGE_MAP_INITIALIZED;
-    return hb_mem_alloc_com_buf(size, flags, &buf);
-  }
-
-  int import(hb_mem_common_buf_t &in_buf, hb_mem_common_buf_t &out_buf) {
-    return hb_mem_import_com_buf(&in_buf, &out_buf);
-  }
-  int free(int32_t fd) { return hb_mem_free_buf(fd); }
-
- private:
-  HbmemModule() { hb_mem_module_open(); }
-};
-
 template <typename MessageT>
 HbmemManager<MessageT>::HbmemManager(int num, int keep_last, int max_mem)
     : bulk_num_(num), keep_last_(keep_last), max_memory_available_(max_mem) {
@@ -54,16 +25,20 @@ HbmemManager<MessageT>::HbmemManager(int num, int keep_last, int max_mem)
   }
   assert(bulk_num_ > keep_last_);
 
-  auto ret =
-      HbmemModule::Instance()->alloc(bulk_num_ * one_bulk_size_, com_buf_);
+  auto alloc_size = bulk_num_ * one_bulk_size_ + sizeof(HbMemPoolHeader);
+  auto ret = HbmemModule::Instance()->alloc(alloc_size, com_buf_);
   if (!ret) {
     common_buf_alloc_ = true;
   } else {
     RCLCPP_ERROR(rclcpp::get_logger("HbmemManager"), "alloc error");
   }
 
+  auto mempool_head = reinterpret_cast<HbMemPoolHeader *>(com_buf_.virt_addr);
+  mempool_head->pub_import_ = true;
+
+  auto mem_start = com_buf_.virt_addr + sizeof(HbMemPoolHeader);
   for (int i = 0; i < bulk_num_; ++i) {
-    auto bulk_addr = com_buf_.virt_addr + i * one_bulk_size_;
+    auto bulk_addr = mem_start + i * one_bulk_size_;
     auto header = reinterpret_cast<HbMemHeader *>(bulk_addr);
     auto message = bulk_addr + sizeof(HbMemHeader);
     bulk_unused_.emplace(i, header, message);
@@ -73,6 +48,9 @@ HbmemManager<MessageT>::HbmemManager(int num, int keep_last, int max_mem)
 template <typename MessageT>
 HbmemManager<MessageT>::~HbmemManager() {
   if (common_buf_alloc_) {
+    auto mempool_head = reinterpret_cast<HbMemPoolHeader *>(com_buf_.virt_addr);
+    mempool_head->pub_import_ = false;
+
     auto ret = HbmemModule::Instance()->free(com_buf_.fd);
     if (ret) {
       RCLCPP_ERROR(rclcpp::get_logger("HbmemManager"), "free error");
@@ -147,8 +125,17 @@ bool HbmemManager<MessageT>::bulk_available(HbmemBulk bulk) {
   if (bulk.index >= bulk_num_) {
     return false;
   }
+  auto mempool_head = reinterpret_cast<HbMemPoolHeader *>(com_buf_.virt_addr);
+  uint16_t sub_count = mempool_head->sub_import_counter_;
+  uint16_t receive_count = bulk.header->get_receive_counter();
+
+  if (sub_count == receive_count) {
+    bulk.header->set_counter(0);
+    bulk.header->set_receive_counter(0);
+  }
 
   if (bulk.header->get_counter() == 0) {
+    bulk.header->set_receive_counter(0);
     return true;
   } else {
     auto time_now =
@@ -180,7 +167,8 @@ HbmemBulkManager<MessageT>::HbmemBulkManager(MessageHbmem *mh) {
 
   auto bulk_index = mh->index;
   auto one_bulk_size = sizeof(HbMemHeader) + sizeof(MessageT);
-  auto bulk_addr = com_buf_.virt_addr + bulk_index * one_bulk_size;
+  auto bulk_addr =
+      com_buf_.virt_addr + sizeof(HbMemPoolHeader) + bulk_index * one_bulk_size;
 
   bulk_.index = bulk_index;
   bulk_.header = reinterpret_cast<HbMemHeader *>(bulk_addr);
