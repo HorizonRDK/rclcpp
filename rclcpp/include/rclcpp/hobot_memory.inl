@@ -137,17 +137,19 @@ bool HbmemManager<MessageT>::bulk_available(HbmemBulk bulk) {
   if (bulk.header->get_counter() == 0) {
     bulk.header->set_receive_counter(0);
     return true;
-  } else {
-    auto time_now =
-        std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::high_resolution_clock::now().time_since_epoch())
-            .count();
-    if ((time_now - bulk.header->get_time_tamp()) >
-        interval_time_ * bulk_num_) {
-      bulk.header->set_counter(0);
-      return true;
-    }
-  }
+  } 
+  // else {
+  //   auto time_now =
+  //       std::chrono::duration_cast<std::chrono::microseconds>(
+  //           std::chrono::high_resolution_clock::now().time_since_epoch())
+  //           .count();
+  //   if ((time_now - bulk.header->get_time_tamp()) >
+  //       interval_time_ * bulk_num_) {
+  //     RCLCPP_ERROR(rclcpp::get_logger("HbmemManager"), "time out!");
+  //     bulk.header->set_counter(0);
+  //     return true;
+  //   }
+  // }
 
   return false;
 }

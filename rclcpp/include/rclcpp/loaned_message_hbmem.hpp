@@ -16,11 +16,13 @@
 #define RCLCPP__LOANED_MESSAGE_HBMEM_HPP_
 
 #include <unistd.h>
-#include <utility>
+
 #include <memory>
+#include <utility>
 
 #include "rcl_interfaces/msg/hobot_memory_common.hpp"
 #include "rclcpp/hobot_memory.hpp"
+
 
 namespace rclcpp {
 
@@ -63,11 +65,12 @@ class LoanedHbmemMessage {
     void *message_ptr = nullptr;
     auto ret = hbmem_manager_->get_message(pub_.get_subscription_count(),
                                            &message_ptr, message_send_);
-    if (ret != 0) {
+    if (ret == 0) {
+      message_ = static_cast<MessageT *>(message_ptr);
+    } else {
       RCLCPP_ERROR(rclcpp::get_logger("LoanedHbmemMessage"),
                    "LoanedHbmemMessage get message failed!");
     }
-    message_ = static_cast<MessageT *>(message_ptr);
   }
 
   /// Constructor of the LoanedHbmemMessage class.

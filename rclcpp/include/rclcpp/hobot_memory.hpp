@@ -100,7 +100,7 @@ class HbmemBulk {
 template <typename MessageT>
 class HbmemManager {
  public:
-  HbmemManager(int num, int keep_last, int max_mem = 128);
+  HbmemManager(int num, int keep_last, int max_mem = 256);
 
   ~HbmemManager();
 

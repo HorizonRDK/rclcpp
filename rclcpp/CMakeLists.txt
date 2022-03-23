@@ -167,10 +167,6 @@ foreach(interface_file ${interface_files})
     include/rclcpp/node_interfaces/get_${interface_name}.hpp)
 endforeach()
 
-option(BUILD_HBMEM "Build hbmem" OFF)
-if(${BUILD_HBMEM})
-  add_definitions(-DUSING_HBMEM)
-endif()
 
 add_library(${PROJECT_NAME}
   ${${PROJECT_NAME}_SRCS})
@@ -180,9 +176,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   "$<INSTALL_INTERFACE:include>")
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
 
-if(${BUILD_HBMEM})
-  target_link_libraries(${PROJECT_NAME} hbmem alog)
-endif()
+target_link_libraries(${PROJECT_NAME} hbmem alog)
+
 
 # specific order: dependents before dependencies
 ament_target_dependencies(${PROJECT_NAME}

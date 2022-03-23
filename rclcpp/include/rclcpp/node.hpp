@@ -67,7 +67,7 @@
 #include "rclcpp/timer.hpp"
 #include "rclcpp/visibility_control.hpp"
 
-// #define USING_HBMEM
+#define USING_HBMEM
 
 #ifdef USING_HBMEM
 #include "rclcpp/publisher_hbmem.hpp"

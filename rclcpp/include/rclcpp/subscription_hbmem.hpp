@@ -292,8 +292,6 @@ class SubscriptionHbmem : public SubscriptionBase {
     any_callback_.dispatch(sptr, message_info);
 
     // bulk_manager.free_message();
-
-    hbmem_manager_->free_message(hbmem_message.get());
   }
 
   void handle_loaned_message(void *loaned_message,
@@ -312,6 +310,9 @@ class SubscriptionHbmem : public SubscriptionBase {
    */
   void return_message(std::shared_ptr<void> &message) override {
     auto typed_message = std::static_pointer_cast<MessageHbmem>(message);
+
+    hbmem_manager_->free_message(typed_message.get());
+
     message_memory_strategy_->return_message(typed_message);
   }
 
