@@ -16,6 +16,7 @@
 #include <queue>
 #include <thread>
 #include <unordered_map>
+#include <vector>
 
 #include "hb_mem_mgr.h"
 #include "rcl_interfaces/msg/hobot_memory_common.hpp"
@@ -123,7 +124,7 @@ class HbmemManager {
 
   std::queue<HbmemBulk> bulk_unused_;
   std::queue<HbmemBulk> bulk_keep_last_;
-  std::queue<HbmemBulk> bulk_using_;
+  std::vector<HbmemBulk> bulk_using_;
 };
 
 template <typename MessageT>

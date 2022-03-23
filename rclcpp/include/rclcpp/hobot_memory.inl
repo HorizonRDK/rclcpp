@@ -75,12 +75,13 @@ int HbmemManager<MessageT>::get_message(int sub_cnt, void **message,
     interval_time_ = time_now - time_stamp_last_;
   }
   time_stamp_last_ = time_now;
-  if (!bulk_using_.empty()) {
-    auto bulk = bulk_using_.front();
-    if (bulk_available(bulk)) {
-      bulk_using_.pop();
-      bulk_unused_.push(bulk);
+  for (auto it = bulk_using_.begin(); it != bulk_using_.end();) {
+    if (bulk_available(*it)) {
+      bulk_unused_.push(*it);
+      it = bulk_using_.erase(it);
+      continue;
     }
+    it++;
   }
 
   if (!bulk_unused_.empty()) {
@@ -113,7 +114,7 @@ int HbmemManager<MessageT>::get_message(int sub_cnt, void **message,
     if (bulk_available(bulk)) {
       bulk_unused_.push(bulk);
     } else {
-      bulk_using_.push(bulk);
+      bulk_using_.push_back(bulk);
     }
   }
 
@@ -129,7 +130,7 @@ bool HbmemManager<MessageT>::bulk_available(HbmemBulk bulk) {
   uint16_t sub_count = mempool_head->sub_import_counter_;
   uint16_t receive_count = bulk.header->get_receive_counter();
 
-  if (sub_count == receive_count) {
+  if (sub_count <= receive_count) {
     bulk.header->set_counter(0);
     bulk.header->set_receive_counter(0);
   }
@@ -137,19 +138,18 @@ bool HbmemManager<MessageT>::bulk_available(HbmemBulk bulk) {
   if (bulk.header->get_counter() == 0) {
     bulk.header->set_receive_counter(0);
     return true;
-  } 
-  // else {
-  //   auto time_now =
-  //       std::chrono::duration_cast<std::chrono::microseconds>(
-  //           std::chrono::high_resolution_clock::now().time_since_epoch())
-  //           .count();
-  //   if ((time_now - bulk.header->get_time_tamp()) >
-  //       interval_time_ * bulk_num_) {
-  //     RCLCPP_ERROR(rclcpp::get_logger("HbmemManager"), "time out!");
-  //     bulk.header->set_counter(0);
-  //     return true;
-  //   }
-  // }
+  } else {
+    auto time_now =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::high_resolution_clock::now().time_since_epoch())
+            .count();
+    if ((time_now - bulk.header->get_time_tamp()) >
+        interval_time_ * bulk_num_ * 10) {
+      bulk.header->set_counter(0);
+      bulk.header->set_receive_counter(0);
+      return true;
+    }
+  }
 
   return false;
 }

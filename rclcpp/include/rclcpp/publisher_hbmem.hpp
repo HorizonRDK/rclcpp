@@ -116,7 +116,7 @@ class PublisherHbmem : public PublisherBase {
           "publisher hbmem histoty keep all is not supported yet");
     }
     hbmem_manager_ = std::make_shared<HbmemManager<MessageT>>(
-        qos_profile.depth * 2, qos_profile.depth);
+        qos_profile.depth * 3, qos_profile.depth);
     // Setup continues in the post construction method, post_init_setup().
   }
 
