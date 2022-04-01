@@ -56,29 +56,27 @@ class HbmemModule {
 
 struct HbMemPoolHeader {
   std::atomic<bool> pub_import_;
+  std::atomic<bool> sub_had_import_;
   std::atomic<uint16_t> sub_import_counter_;
 };
 
 class HbMemHeader {
  public:
-  int32_t get_fd(void) { return fd_; }
-  void set_fd(int32_t fd) { fd_ = fd; }
   uint64_t get_time_tamp(void) { return time_stamp_; }
   void set_time_stamp(uint64_t time_stamp) { time_stamp_ = time_stamp; }
-  void set_counter(uint32_t cnt) { counter_ = cnt; }
-  uint32_t get_counter(void) { return counter_; }
+  void set_counter(uint16_t cnt) { counter_ = cnt; }
+  uint16_t get_counter(void) { return counter_; }
   void dec_counter(void) { counter_--; }
   uint64_t get_index(void) { return index_; }
   void set_index(uint64_t i) { index_ = i; }
-  void set_receive_counter(uint16_t cnt) { sub_receive_counter_ = cnt; }
-  uint16_t get_receive_counter(void) { return sub_receive_counter_; }
-  void dec_receive_counter(void) { sub_receive_counter_--; }
-  void inc_receive_counter(void) { sub_receive_counter_++; }
+  void set_receive_counter(uint16_t cnt) { sub_received_counter_ = cnt; }
+  uint16_t get_receive_counter(void) { return sub_received_counter_; }
+  void dec_receive_counter(void) { sub_received_counter_--; }
+  void inc_receive_counter(void) { sub_received_counter_++; }
 
  private:
-  int32_t fd_;
-  std::atomic<uint32_t> counter_;
-  std::atomic<uint16_t> sub_receive_counter_;
+  std::atomic<uint16_t> counter_;
+  std::atomic<uint16_t> sub_received_counter_;
   uint64_t index_;
   uint64_t time_stamp_;
 };
@@ -165,7 +163,10 @@ class HbmemBulksManager {
         auto mempool_head =
             reinterpret_cast<HbMemPoolHeader *>(chunk.second.com_buf.virt_addr);
         mempool_head->sub_import_counter_--;
-        HbmemModule::Instance()->free(chunk.second.com_buf.fd);
+        auto ret = HbmemModule::Instance()->free(chunk.second.com_buf.fd);
+        if (ret) {
+          throw std::runtime_error("HbmemBulksManager hbmem free buffer error");
+        }
       }
     }
     watcher_runing_ = false;
@@ -176,10 +177,9 @@ class HbmemBulksManager {
   }
 
   int get_message(MessageHbmem *mh, void **message) {
-    auto time_now =
-        std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::high_resolution_clock::now().time_since_epoch())
-            .count();
+    auto time_now = std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch())
+                        .count();
     {
       std::lock_guard<std::mutex> lg(mutex_);
 
@@ -205,15 +205,20 @@ class HbmemBulksManager {
         com_buf_recv.share_id = mh->share_id;
         com_buf_recv.flags = mh->flags;
         com_buf_recv.size = mh->size;
-        com_buf_recv.virt_addr = reinterpret_cast<uint8_t *>(mh->virt_addr);
         com_buf_recv.phys_addr = mh->phys_addr;
         com_buf_recv.offset = mh->offset;
 
         hb_mem_common_buf_t com_buf_import;
-        HbmemModule::Instance()->import(com_buf_recv, com_buf_import);
+        auto ret =
+            HbmemModule::Instance()->import(com_buf_recv, com_buf_import);
+        if (ret) {
+          throw std::runtime_error(
+              "HbmemBulksManager hbmem import buffer error");
+        }
         auto mempool_head =
             reinterpret_cast<HbMemPoolHeader *>(com_buf_import.virt_addr);
         mempool_head->sub_import_counter_++;
+        mempool_head->sub_had_import_ = true;
 
         ChunkInfo chunk_info;
         chunk_info.hbmsg = *mh;
@@ -265,8 +270,7 @@ class HbmemBulksManager {
   bool is_same_hbmem(MessageHbmem &a, MessageHbmem &b) {
     return (a.fd == b.fd) && (a.share_id == b.share_id) &&
            (a.flags == b.flags) && (a.size == b.size) &&
-           (a.virt_addr == b.virt_addr) && (a.phys_addr == b.phys_addr) &&
-           (a.offset == b.offset);
+           (a.phys_addr == b.phys_addr) && (a.offset == b.offset);
   };
 
   void chunks_watcher() {

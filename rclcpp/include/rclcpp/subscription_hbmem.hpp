@@ -76,8 +76,6 @@ class SubscriptionHbmem : public SubscriptionBase {
   using MessageDeleter = allocator::Deleter<MessageAllocator, MessageHbmem>;
   using ConstMessageSharedPtr = std::shared_ptr<const MessageHbmem>;
   using MessageUniquePtr = std::unique_ptr<MessageHbmem, MessageDeleter>;
-  // using SubscriptionTopicStatisticsSharedPtr =
-  //   std::shared_ptr<rclcpp::topic_statistics::SubscriptionTopicStatistics<MessageHbmem>>;
   using SubscriptionTopicStatisticsSharedPtr = std::shared_ptr<
       rclcpp::topic_statistics::SubscriptionTopicStatistics<CallbackMessageT>>;
   RCLCPP_SMART_PTR_DEFINITIONS(SubscriptionHbmem)
@@ -88,19 +86,17 @@ class SubscriptionHbmem : public SubscriptionBase {
    * Instead, subscriptions should be instantiated through the function
    * rclcpp::create_subscription().
    *
-   * \param[in] node_base NodeBaseInterface pointer that is used in part of the
-   * setup. \param[in] type_support_handle rosidl type support struct, for the
-   * Message type of the topic. \param[in] topic_name Name of the topic to
-   * subscribe to. \param[in] qos QoS profile for Subcription. \param[in]
-   * callback User defined callback to call when a message is received.
+   * \param[in] node_base NodeBaseInterface pointer that is used in part of the setup.
+   * \param[in] type_support_handle rosidl type support struct, for the Message type of the topic.
+   * \param[in] topic_name Name of the topic to subscribe to.
+   * \param[in] qos QoS profile for Subcription.
+   * \param[in] callback User defined callback to call when a message is received.
    * \param[in] options options for the subscription.
-   * \param[in] message_memory_strategy The memory strategy to be used for
-   * managing message memory. \param[in] subscription_topic_statistics Optional
-   * pointer to a topic statistics subcription. \throws std::invalid_argument if
-   * the QoS is uncompatible with intra-process (if one of the following
-   * conditions are true: qos_profile.history ==
-   * RMW_QOS_POLICY_HISTORY_KEEP_ALL, qos_profile.depth == 0 or
-   * qos_profile.durability != RMW_QOS_POLICY_DURABILITY_VOLATILE).
+   * \param[in] message_memory_strategy The memory strategy to be used for managing message memory.
+   * \param[in] subscription_topic_statistics Optional pointer to a topic statistics subcription.
+   * \throws std::invalid_argument if the QoS is uncompatible with intra-process (if one
+   *   of the following conditions are true: qos_profile.history == RMW_QOS_POLICY_HISTORY_KEEP_ALL,
+   *   qos_profile.depth == 0 or qos_profile.durability != RMW_QOS_POLICY_DURABILITY_VOLATILE).
    */
   SubscriptionHbmem(
       rclcpp::node_interfaces::NodeBaseInterface *node_base,
@@ -146,63 +142,17 @@ class SubscriptionHbmem : public SubscriptionBase {
       }
     }
 
+    if (rclcpp::detail::resolve_use_intra_process(options, *node_base)) {
+      throw std::runtime_error(
+          "subscription hbmem intra process not supported yet");
+    }
+
     hbmem_manager_ = std::make_shared<HbmemBulksManager<CallbackMessageT>>();
 
-    // Setup intra process publishing if requested.
-    // if (rclcpp::detail::resolve_use_intra_process(options, *node_base)) {
-    //   using rclcpp::detail::resolve_intra_process_buffer_type;
-
-    //   // Check if the QoS is compatible with intra-process.
-    //   rmw_qos_profile_t qos_profile = get_actual_qos().get_rmw_qos_profile();
-    //   if (qos_profile.history == RMW_QOS_POLICY_HISTORY_KEEP_ALL) {
-    //     throw std::invalid_argument(
-    //             "intraprocess communication is not allowed with keep all
-    //             history qos policy");
-    //   }
-    //   if (qos_profile.depth == 0) {
-    //     throw std::invalid_argument(
-    //             "intraprocess communication is not allowed with 0 depth qos
-    //             policy");
-    //   }
-    //   if (qos_profile.durability != RMW_QOS_POLICY_DURABILITY_VOLATILE) {
-    //     throw std::invalid_argument(
-    //             "intraprocess communication allowed only with volatile
-    //             durability");
-    //   }
-
-    //   // First create a SubscriptionIntraProcess which will be given to the
-    //   intra-process manager. auto context = node_base->get_context(); using
-    //   SubscriptionIntraProcessT =
-    //   rclcpp::experimental::SubscriptionIntraProcess<
-    //     CallbackMessageT,
-    //     AllocatorT,
-    //     typename MessageUniquePtr::deleter_type>;
-    //   auto subscription_intra_process =
-    //   std::make_shared<SubscriptionIntraProcessT>(
-    //     callback,
-    //     options.get_allocator(),
-    //     context,
-    //     this->get_topic_name(),  // important to get like this, as it has the
-    //     fully-qualified name qos_profile,
-    //     resolve_intra_process_buffer_type(options.intra_process_buffer_type,
-    //     callback));
-    //   TRACEPOINT(
-    //     rclcpp_subscription_init,
-    //     (const void *)get_subscription_handle().get(),
-    //     (const void *)subscription_intra_process.get());
-
-    //   // Add it to the intra process manager.
-    //   using rclcpp::experimental::IntraProcessManager;
-    //   auto ipm = context->get_sub_context<IntraProcessManager>();
-    //   uint64_t intra_process_subscription_id =
-    //   ipm->add_subscription(subscription_intra_process);
-    //   this->setup_intra_process(intra_process_subscription_id, ipm);
-    // }
-
-    // if (subscription_topic_statistics != nullptr) {
-    //   this->subscription_topic_statistics_ =
-    //   std::move(subscription_topic_statistics);
-    // }
+    if (subscription_topic_statistics != nullptr) {
+      this->subscription_topic_statistics_ =
+          std::move(subscription_topic_statistics);
+    }
 
     TRACEPOINT(rclcpp_subscription_init,
                (const void *)get_subscription_handle().get(),
@@ -253,17 +203,17 @@ class SubscriptionHbmem : public SubscriptionBase {
                                   message_info_out);
   }
 
-  std::shared_ptr<void> create_message() override {
-    /* The default message memory strategy provides a dynamically allocated
-     * message on each call to create_message, though alternative memory
-     * strategies that re-use a preallocated message may be used (see
-     * rclcpp/strategies/message_pool_memory_strategy.hpp).
+  std::shared_ptr<void>
+  create_message() override {
+    /* The default message memory strategy provides a dynamically allocated message on each call to
+     * create_message, though alternative memory strategies that re-use a preallocated message may be
+     * used (see rclcpp/strategies/message_pool_memory_strategy.hpp).
      */
     return message_memory_strategy_->borrow_message();
   }
 
-  std::shared_ptr<rclcpp::SerializedMessage> create_serialized_message()
-      override {
+  std::shared_ptr<rclcpp::SerializedMessage>
+  create_serialized_message() override {
     return message_memory_strategy_->borrow_serialized_message();
   }
 
@@ -320,8 +270,8 @@ class SubscriptionHbmem : public SubscriptionBase {
   /**
    * \param[inout] message serialized message to be returned
    */
-  void return_serialized_message(
-      std::shared_ptr<rclcpp::SerializedMessage> &message) override {
+  void
+  return_serialized_message(std::shared_ptr<rclcpp::SerializedMessage> & message) override {
     message_memory_strategy_->return_serialized_message(message);
   }
 
@@ -341,10 +291,8 @@ class SubscriptionHbmem : public SubscriptionBase {
   const rclcpp::SubscriptionOptionsWithAllocator<AllocatorT> options_;
   typename message_memory_strategy::MessageMemoryStrategy<
       MessageHbmem, AllocatorT>::SharedPtr message_memory_strategy_;
-  /// Component which computes and publishes topic statistics for this
-  /// subscriber
-  // SubscriptionTopicStatisticsSharedPtr
-  // subscription_topic_statistics_{nullptr};
+  /// Component which computes and publishes topic statistics for this subscriber
+  SubscriptionTopicStatisticsSharedPtr subscription_topic_statistics_{nullptr};
 
   std::shared_ptr<HbmemBulksManager<CallbackMessageT>> hbmem_manager_;
 };

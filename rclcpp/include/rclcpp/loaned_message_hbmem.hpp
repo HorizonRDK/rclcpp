@@ -68,7 +68,7 @@ class LoanedHbmemMessage {
     if (ret == 0) {
       message_ = static_cast<MessageT *>(message_ptr);
     } else {
-      RCLCPP_ERROR(rclcpp::get_logger("LoanedHbmemMessage"),
+      RCLCPP_INFO(rclcpp::get_logger("rclcpp"),
                    "LoanedHbmemMessage get message failed!");
     }
   }
@@ -150,19 +150,16 @@ class LoanedHbmemMessage {
   /// Release ownership of the ROS message instance.
   /**
    * A call to `release()` will unmanage the memory for the ROS message.
-   * That means that the destructor of this class will not free the memory on
-   * scope exit.
+   * That means that the destructor of this class will not free the memory on scope exit.
+   * If the message is loaned from the middleware but not be published, the user needs to call
+   * `rcl_return_loaned_message_from_publisher` manually.
+   * If the memory is from the local allocator, the memory is freed when the unique pointer
+   * goes out instead.
    *
-   * \return Raw pointer to the message instance.
+   * \return std::unique_ptr to the message instance.
    */
-  MessageT *release() {
-    auto msg = message_;
-    message_ = nullptr;
-    return msg;
-  }
-
   std::unique_ptr<MessageHbmem, std::function<void(MessageHbmem *)>>
-  release_message() {
+  release() {
     auto msg = message_send_;
     message_send_ = nullptr;
     return std::unique_ptr<MessageHbmem, std::function<void(MessageHbmem *)>>(

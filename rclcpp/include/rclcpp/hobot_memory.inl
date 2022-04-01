@@ -23,16 +23,15 @@ HbmemManager<MessageT>::HbmemManager(int num, int keep_last, int max_mem)
   if (bulk_num_ * one_bulk_size_ > max_memory_available_ * 1024 * 1024) {
     bulk_num_ = max_memory_available_ * 1024 * 1024 / one_bulk_size_;
   }
-  assert(bulk_num_ > keep_last_);
+  assert(bulk_num_ > keep_last_ * 2);
 
   auto alloc_size = bulk_num_ * one_bulk_size_ + sizeof(HbMemPoolHeader);
   auto ret = HbmemModule::Instance()->alloc(alloc_size, com_buf_);
-  if (!ret) {
-    common_buf_alloc_ = true;
-  } else {
-    RCLCPP_ERROR(rclcpp::get_logger("HbmemManager"), "alloc error");
+  if (ret) {
+    throw std::runtime_error("publisher hbmem alloc buffer error");
   }
 
+  common_buf_alloc_ = true;
   auto mempool_head = reinterpret_cast<HbMemPoolHeader *>(com_buf_.virt_addr);
   mempool_head->pub_import_ = true;
 
@@ -53,7 +52,7 @@ HbmemManager<MessageT>::~HbmemManager() {
 
     auto ret = HbmemModule::Instance()->free(com_buf_.fd);
     if (ret) {
-      RCLCPP_ERROR(rclcpp::get_logger("HbmemManager"), "free error");
+      throw std::runtime_error("publisher hbmem free buffer error");
     }
   }
 }
@@ -67,10 +66,9 @@ int HbmemManager<MessageT>::get_message(int sub_cnt, void **message,
     return result;
   }
 
-  auto time_now =
-      std::chrono::duration_cast<std::chrono::microseconds>(
-          std::chrono::high_resolution_clock::now().time_since_epoch())
-          .count();
+  auto time_now = std::chrono::duration_cast<std::chrono::microseconds>(
+                      std::chrono::steady_clock::now().time_since_epoch())
+                      .count();
   if (time_stamp_last_) {
     interval_time_ = time_now - time_stamp_last_;
   }
@@ -79,7 +77,7 @@ int HbmemManager<MessageT>::get_message(int sub_cnt, void **message,
     if (bulk_available(*it)) {
       bulk_unused_.push(*it);
       it = bulk_using_.erase(it);
-      continue;
+      break;
     }
     it++;
   }
@@ -88,7 +86,6 @@ int HbmemManager<MessageT>::get_message(int sub_cnt, void **message,
     auto bulk = bulk_unused_.front();
     bulk_unused_.pop();
 
-    bulk.header->set_fd(com_buf_.fd);
     bulk.header->set_counter(sub_cnt);
     bulk.header->set_time_stamp(time_now);
 
@@ -98,7 +95,6 @@ int HbmemManager<MessageT>::get_message(int sub_cnt, void **message,
     hbmem_message->share_id = com_buf_.share_id;
     hbmem_message->flags = com_buf_.flags;
     hbmem_message->size = com_buf_.size;
-    hbmem_message->virt_addr = reinterpret_cast<uint64_t>(com_buf_.virt_addr);
     hbmem_message->phys_addr = com_buf_.phys_addr;
     hbmem_message->offset = com_buf_.offset;
     hbmem_message->index = bulk.index;
@@ -127,22 +123,23 @@ bool HbmemManager<MessageT>::bulk_available(HbmemBulk bulk) {
     return false;
   }
   auto mempool_head = reinterpret_cast<HbMemPoolHeader *>(com_buf_.virt_addr);
-  uint16_t sub_count = mempool_head->sub_import_counter_;
-  uint16_t receive_count = bulk.header->get_receive_counter();
+  if (mempool_head->sub_had_import_) {
+    uint16_t sub_import_count = mempool_head->sub_import_counter_;
+    uint16_t sub_receive_count = bulk.header->get_receive_counter();
 
-  if (sub_count <= receive_count) {
-    bulk.header->set_counter(0);
-    bulk.header->set_receive_counter(0);
+    if (sub_import_count <= sub_receive_count) {
+      bulk.header->set_counter(0);
+      bulk.header->set_receive_counter(0);
+    }
   }
 
   if (bulk.header->get_counter() == 0) {
     bulk.header->set_receive_counter(0);
     return true;
   } else {
-    auto time_now =
-        std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::high_resolution_clock::now().time_since_epoch())
-            .count();
+    auto time_now = std::chrono::duration_cast<std::chrono::microseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch())
+                        .count();
     if ((time_now - bulk.header->get_time_tamp()) >
         interval_time_ * bulk_num_ * 10) {
       bulk.header->set_counter(0);
