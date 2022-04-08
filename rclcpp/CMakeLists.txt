@@ -167,13 +167,18 @@ foreach(interface_file ${interface_files})
     include/rclcpp/node_interfaces/get_${interface_name}.hpp)
 endforeach()
 
+
 add_library(${PROJECT_NAME}
   ${${PROJECT_NAME}_SRCS})
-target_include_directories(${PROJECT_NAME} PUBLIC
+target_include_directories(${PROJECT_NAME} PUBLIC 
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>"
   "$<INSTALL_INTERFACE:include>")
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
+
+target_link_libraries(${PROJECT_NAME} hbmem alog)
+
+
 # specific order: dependents before dependencies
 ament_target_dependencies(${PROJECT_NAME}
   "libstatistics_collector"
