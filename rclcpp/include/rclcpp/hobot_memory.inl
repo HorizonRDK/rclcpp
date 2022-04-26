@@ -82,6 +82,17 @@ int HbmemManager<MessageT>::get_message(int sub_cnt, void **message,
     it++;
   }
 
+  if (bulk_keep_last_.size() > keep_last_) {
+    auto bulk = bulk_keep_last_.front();
+    bulk_keep_last_.pop();
+
+    if (bulk_available(bulk)) {
+      bulk_unused_.push(bulk);
+    } else {
+      bulk_using_.push_back(bulk);
+    }
+  }
+
   if (!bulk_unused_.empty()) {
     auto bulk = bulk_unused_.front();
     bulk_unused_.pop();
@@ -103,17 +114,6 @@ int HbmemManager<MessageT>::get_message(int sub_cnt, void **message,
     result = 0;
   }
 
-  if (bulk_keep_last_.size() > keep_last_) {
-    auto bulk = bulk_keep_last_.front();
-    bulk_keep_last_.pop();
-
-    if (bulk_available(bulk)) {
-      bulk_unused_.push(bulk);
-    } else {
-      bulk_using_.push_back(bulk);
-    }
-  }
-
   return result;
 }
 
@@ -130,6 +130,7 @@ bool HbmemManager<MessageT>::bulk_available(HbmemBulk bulk) {
     if (sub_import_count <= sub_receive_count) {
       bulk.header->set_counter(0);
       bulk.header->set_receive_counter(0);
+      return true;
     }
   }
 
@@ -141,7 +142,7 @@ bool HbmemManager<MessageT>::bulk_available(HbmemBulk bulk) {
                         std::chrono::steady_clock::now().time_since_epoch())
                         .count();
     if ((time_now - bulk.header->get_time_tamp()) >
-        interval_time_ * bulk_num_ * 10) {
+        interval_time_ * bulk_num_) {
       bulk.header->set_counter(0);
       bulk.header->set_receive_counter(0);
       return true;
