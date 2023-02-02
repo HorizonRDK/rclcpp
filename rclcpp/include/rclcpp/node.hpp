@@ -68,11 +68,28 @@
 #include "rclcpp/timer.hpp"
 #include "rclcpp/visibility_control.hpp"
 
+#if (defined PLATFORM_X3) || (defined PLATFORM_J5)
 #define USING_HBMEM
+#endif
 
 #ifdef USING_HBMEM
 #include "rclcpp/publisher_hbmem.hpp"
 #include "rclcpp/subscription_hbmem.hpp"
+#else
+namespace rclcpp
+{
+  template <typename MessageT, typename AllocatorT = std::allocator<void>>
+  using PublisherHbmem = Publisher<MessageT, AllocatorT>;
+
+  template<
+    typename CallbackMessageT,
+    typename AllocatorT = std::allocator<void>,
+    typename MessageMemoryStrategyT = rclcpp::message_memory_strategy::MessageMemoryStrategy<
+      CallbackMessageT,
+      AllocatorT>
+  >
+  using SubscriptionHbmem = Subscription<CallbackMessageT, AllocatorT, MessageMemoryStrategyT>;
+}  // namespace rclcpp
 #endif
 
 namespace rclcpp
@@ -229,7 +246,6 @@ public:
     )
   );
 
-#ifdef USING_HBMEM
   template<
     typename MessageT,
     typename AllocatorT = std::allocator<void>,
@@ -265,7 +281,6 @@ public:
       MessageMemoryStrategyT::create_default()
     )
   );
-#endif
 
   /// Create a timer.
   /**

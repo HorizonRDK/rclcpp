@@ -176,7 +176,29 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   "$<INSTALL_INTERFACE:include>")
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
 
-target_link_libraries(${PROJECT_NAME} hbmem alog)
+
+if(PLATFORM_X3)
+  message("build platform X3")
+  add_definitions(-DPLATFORM_X3)
+elseif(PLATFORM_J5)
+  message("build platform J5")
+  add_definitions(-DPLATFORM_J5)
+elseif(PLATFORM_X86)
+  message("build platform X86")
+  add_definitions(-DPLATFORM_X86)
+else()
+  if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+    message("invalid platform, build platform X3 default")
+    add_definitions(-DPLATFORM_X3)
+  elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+    message("build platform X86")
+    add_definitions(-DPLATFORM_X86)
+  endif()
+endif()
+
+if(PLATFORM_X3 OR PLATFORM_J5)
+  target_link_libraries(${PROJECT_NAME} hbmem alog)
+endif()
 
 
 # specific order: dependents before dependencies
