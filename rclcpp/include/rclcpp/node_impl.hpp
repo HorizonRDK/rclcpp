@@ -56,7 +56,7 @@
 namespace rclcpp
 {
 
-#ifdef USING_HBMEM
+#ifdef USING_HBMEM_AARCH64
 RCLCPP_LOCAL
 inline
 std::string
@@ -123,7 +123,7 @@ Node::create_subscription(
     msg_mem_strat);
 }
 
-#ifdef USING_HBMEM
+#if defined(USING_HBMEM_AARCH64)
 template<typename MessageT, typename AllocatorT, typename PublisherT>
 std::shared_ptr<PublisherT>
 Node::create_publisher_hbmem(
@@ -163,7 +163,7 @@ Node::create_subscription_hbmem(
     options,
     msg_mem_strat);
 }
-#else
+#elif defined(USING_HBMEM_X86_64)
 template<typename MessageT, typename AllocatorT, typename PublisherT>
 std::shared_ptr<PublisherT>
 Node::create_publisher_hbmem(

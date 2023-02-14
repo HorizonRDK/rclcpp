@@ -68,14 +68,17 @@
 #include "rclcpp/timer.hpp"
 #include "rclcpp/visibility_control.hpp"
 
-#if (defined PLATFORM_X3) || (defined PLATFORM_J5)
-#define USING_HBMEM
+
+#if defined(__aarch64__)
+#define USING_HBMEM_AARCH64
+#elif defined(__x86_64__)
+#define USING_HBMEM_X86_64
 #endif
 
-#ifdef USING_HBMEM
+#if defined(USING_HBMEM_AARCH64)
 #include "rclcpp/publisher_hbmem.hpp"
 #include "rclcpp/subscription_hbmem.hpp"
-#else
+#elif defined(USING_HBMEM_X86_64)
 namespace rclcpp
 {
   template <typename MessageT, typename AllocatorT = std::allocator<void>>
