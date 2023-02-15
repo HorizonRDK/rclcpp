@@ -249,6 +249,7 @@ public:
     )
   );
 
+#if defined(USING_HBMEM_AARCH64) || defined(USING_HBMEM_X86_64)
   template<
     typename MessageT,
     typename AllocatorT = std::allocator<void>,
@@ -284,6 +285,7 @@ public:
       MessageMemoryStrategyT::create_default()
     )
   );
+#endif
 
   /// Create a timer.
   /**
