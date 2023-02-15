@@ -56,7 +56,7 @@
 namespace rclcpp
 {
 
-#ifdef USING_HBMEM
+#ifdef USING_HBMEM_AARCH64
 RCLCPP_LOCAL
 inline
 std::string
@@ -123,7 +123,7 @@ Node::create_subscription(
     msg_mem_strat);
 }
 
-#ifdef USING_HBMEM
+#if defined(USING_HBMEM_AARCH64)
 template<typename MessageT, typename AllocatorT, typename PublisherT>
 std::shared_ptr<PublisherT>
 Node::create_publisher_hbmem(
@@ -158,6 +158,44 @@ Node::create_subscription_hbmem(
    CallbackMessageT, SubscriptionT>(
     *this,
     extend_name_with_sub_namespace(extend_name_with_soc_uid(topic_name), this->get_sub_namespace()),
+    qos,
+    std::forward<CallbackT>(callback),
+    options,
+    msg_mem_strat);
+}
+#elif defined(USING_HBMEM_X86_64)
+template<typename MessageT, typename AllocatorT, typename PublisherT>
+std::shared_ptr<PublisherT>
+Node::create_publisher_hbmem(
+  const std::string & topic_name,
+  const rclcpp::QoS & qos,
+  const PublisherOptionsWithAllocator<AllocatorT> & options)
+{
+  return rclcpp::create_publisher<MessageT, AllocatorT, PublisherT>(
+    *this,
+    extend_name_with_sub_namespace(topic_name, this->get_sub_namespace()),
+    qos,
+    options);
+}
+
+template<
+  typename MessageT,
+  typename CallbackT,
+  typename AllocatorT,
+  typename CallbackMessageT,
+  typename SubscriptionT,
+  typename MessageMemoryStrategyT>
+std::shared_ptr<SubscriptionT>
+Node::create_subscription_hbmem(
+  const std::string & topic_name,
+  const rclcpp::QoS & qos,
+  CallbackT && callback,
+  const SubscriptionOptionsWithAllocator<AllocatorT> & options,
+  typename MessageMemoryStrategyT::SharedPtr msg_mem_strat)
+{
+  return rclcpp::create_subscription<MessageT>(
+    *this,
+    extend_name_with_sub_namespace(topic_name, this->get_sub_namespace()),
     qos,
     std::forward<CallbackT>(callback),
     options,

@@ -176,7 +176,10 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   "$<INSTALL_INTERFACE:include>")
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
 
-target_link_libraries(${PROJECT_NAME} hbmem alog)
+
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+  target_link_libraries(${PROJECT_NAME} hbmem alog)
+endif()
 
 
 # specific order: dependents before dependencies
