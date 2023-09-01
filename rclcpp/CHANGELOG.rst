@@ -2,6 +2,18 @@
 Changelog for package rclcpp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.4.3 (2023-05-27)
+------------------
+* Do not attempt to use void allocators for memory allocation. (backport `#1657 <https://github.com/ros2/rclcpp/issues/1657>`_) (`#2004 <https://github.com/ros2/rclcpp/issues/2004>`_)
+* Contributors: Michel Hidalgo
+
+2.4.2 (2022-07-25)
+------------------
+* Add statistics for handle_loaned_message (`#1927 <https://github.com/ros2/rclcpp/issues/1927>`_) (`#1934 <https://github.com/ros2/rclcpp/issues/1934>`_)
+* Add test-dep ament_cmake_google_benchmark (`#1904 <https://github.com/ros2/rclcpp/issues/1904>`_) (`#1910 <https://github.com/ros2/rclcpp/issues/1910>`_)
+* Use parantheses around logging macro parameter (`#1820 <https://github.com/ros2/rclcpp/issues/1820>`_) (`#1823 <https://github.com/ros2/rclcpp/issues/1823>`_)
+* Contributors: Abrar Rahman Protyasha, Barry Xu, Gaël Écorchard
+
 2.4.1 (2022-01-31)
 ------------------
 * Fix subscription instrumentation for ConstSharedPtr[WithInfo]Callback (`#1872 <https://github.com/ros2/rclcpp/issues/1872>`_)

@@ -1,5 +1,4 @@
 // Copyright 2016 Open Source Robotics Foundation, Inc.
-// Copyright (c) 2022，Horizon Robotics.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -105,9 +104,10 @@ create_subscription_factory(
       const rclcpp::QoS & qos
     ) -> rclcpp::SubscriptionBase::SharedPtr
     {
+      using rclcpp::Subscription;
       using rclcpp::SubscriptionBase;
 
-      auto sub = std::make_shared<SubscriptionT>(
+      auto sub = Subscription<CallbackMessageT, AllocatorT>::make_shared(
         node_base,
         *rosidl_typesupport_cpp::get_message_type_support_handle<MessageT>(),
         topic_name,

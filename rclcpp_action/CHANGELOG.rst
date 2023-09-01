@@ -3,6 +3,14 @@ Changelog for package rclcpp_action
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
+2.4.3 (2023-05-27)
+------------------
+* Revert "Revert "extract the result response before the callback is is… (backport `#2152 <https://github.com/ros2/rclcpp/issues/2152>`_) (`#2153 <https://github.com/ros2/rclcpp/issues/2153>`_)
+* Contributors: Tomoya Fujita
+
+2.4.2 (2022-07-25)
+------------------
+
 2.4.1 (2022-01-31)
 ------------------
 * Add node_waitables\_ to copy constructor (backport `#1799 <https://github.com/ros2/rclcpp/issues/1799>`_) (`#1834 <https://github.com/ros2/rclcpp/issues/1834>`_)
