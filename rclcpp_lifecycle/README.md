@@ -1,5 +1,3 @@
-English| [简体中文](./README_cn.md)
-
 # `rclcpp_lifecycle`
 
 Package containing a prototype for lifecycle implementation.

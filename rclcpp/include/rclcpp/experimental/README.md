@@ -1,6 +1,4 @@
-English| [简体中文](./README_cn.md)
+Notice that headers in this folder should only provide symbols in the rclcpp::experimental namespace.
 
-请注意，此文件夹中的头文件应仅提供rclcpp::experimental命名空间中的符号。
-
-同时注意，这些头文件不被视为公共API的一部分，因为它们尚未稳定。
-因此，它们可能会在不事先通知的情况下更改。
+Also notice that these headers are not considered part of the public API as they have not yet been stabilized.
+And therefore they are subject to change without notice.

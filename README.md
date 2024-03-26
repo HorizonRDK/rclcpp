@@ -1,5 +1,3 @@
-English| [简体中文](./README_cn.md)
-
 # rclcpp
 
 This repository contains the source code for the ROS Client Library for C++ package, included with a standard install of any ROS 2 distro.

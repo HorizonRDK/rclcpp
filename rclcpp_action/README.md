@@ -1,5 +1,3 @@
-English| [简体中文](./README_cn.md)
-
 # `rclcpp_action`
 
 Adds action APIs for C++.
